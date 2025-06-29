@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendador Acavt - Versão Final</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        :root {
+            --primary-color: #4a90e2; --secondary-color: #50e3c2; --success-color: #28a745;
+            --background-color: #f7f9fc; --surface-color: #ffffff; --text-color: #333;
+            --danger-color: #dc3545; --light-gray-color: #f0f0f0; --shadow-color: rgba(0, 0, 0, 0.08);
+            --google-blue: #4285F4; --ms-blue: #0078D4; --apple-gray: #555;
+        }
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: var(--text-color); margin: 0; padding: 20px; }
+        #layout-wrapper { display: flex; flex-direction: column; gap: 20px; max-width: 1100px; margin: 0 auto; }
+        #app-container { background-color: var(--surface-color); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px var(--shadow-color); flex-grow: 1; }
+        h1, h2 { text-align: center; color: var(--primary-color); font-weight: 600; }
+        h1 { margin-bottom: 25px; }
+        h2 { margin-top: 30px; font-size: 1.5em; border-bottom: 2px solid var(--light-gray-color); padding-bottom: 10px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        label { margin-bottom: 8px; font-weight: 500; color: #555; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; transition: all 0.2s ease; background-color: #fdfdfd; font-family: 'Poppins', sans-serif; font-size: 14px; }
+        input:focus, select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2); outline: none; }
+        #user-info-section, #schedule-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        #user-info-section h2, #data-management-section h2 { grid-column: 1 / -1; margin-top: 0; }
+        #period-selector { background-color: rgba(74, 144, 226, 0.1); border-left: 5px solid var(--primary-color); padding: 20px; border-radius: 8px; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        #period-selector label { font-weight: 500; color: var(--primary-color); font-size: 1.1em; }
+        #summary-info { display: flex; justify-content: space-around; text-align: center; background-color: var(--light-gray-color); border-radius: 8px; padding: 15px; margin: -10px 0 20px 0; }
+        .summary-item { display: flex; flex-direction: column; }
+        .summary-item .value { font-size: 1.5em; font-weight: 600; }
+        .summary-item .label { font-size: 0.9em; color: #666; }
+        .summary-item .value.agendadas { color: var(--primary-color); }
+        .summary-item .value.concluidas { color: var(--success-color); }
+        .summary-item .value.disponiveis { color: var(--danger-color); }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; }
+        #add-schedule-btn { background-color: var(--primary-color); color: white; grid-column: 1 / -1; }
+        #add-schedule-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(74, 144, 226, 0.4); }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        #save-image-btn, #backup-btn { background: linear-gradient(135deg, var(--secondary-color), #2bcbba); color: white; }
+        #print-ticket-btn, #restore-btn { background-color: #6c757d; color: white; }
+        #calendar-sync-main-btn { background-color: var(--primary-color); grid-column: 1 / -1; margin-bottom: 15px; }
+        #data-management-section { margin-top: 30px; border-top: 2px solid var(--light-gray-color); padding-top: 10px; }
+        #schedule-list { list-style-type: none; padding: 0; margin-top: 20px; }
+        .schedule-item { background-color: var(--surface-color); border-left: 5px solid var(--secondary-color); padding: 15px 20px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 15px; box-shadow: 0 2px 5px var(--shadow-color); }
+        .schedule-item.concluded { background-color: #e6f9f0; border-left-color: var(--success-color); }
+        .schedule-item .info { font-size: 14px; line-height: 1.6; flex-grow: 1; display: flex; align-items: center; gap: 10px; }
+        .schedule-item.concluded .info-text { text-decoration: line-through; color: #888; }
+        .schedule-item .info .num { font-weight: 600; color: var(--primary-color); font-size: 1.2em; }
+        .schedule-item .info span { display: block; color: #666; }
+        .schedule-item.concluded .info-text span { color: #aaa; }
+        .schedule-item .info strong { color: var(--text-color); }
+        .schedule-item .actions { display: flex; gap: 8px; }
+        .actions button { padding: 8px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; background-color: transparent; color: #888; }
+        .actions .conclude-btn { color: var(--success-color); }
+        .actions .remove-btn { color: var(--danger-color); }
+        #calendar-container { background-color: var(--surface-color); padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px var(--shadow-color); }
+        #calendar-header { text-align: center; font-size: 1.2em; font-weight: 600; margin-bottom: 15px; color: var(--primary-color); }
+        #calendar-weekdays, #calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+        #calendar-weekdays { margin-bottom: 10px; }
+        #calendar-weekdays div { font-weight: 500; font-size: 0.9em; color: #999; }
+        #calendar-grid { gap: 5px; }
+        .calendar-day { display: flex; justify-content: center; align-items: center; height: 38px; border-radius: 8px; background-color: var(--light-gray-color); font-weight: 500; }
+        .calendar-day.empty { background-color: transparent; }
+        .calendar-day.scheduled { background-color: var(--primary-color); color: white; }
+        .calendar-day.concluded { background-color: var(--success-color); color: white; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.3s ease; }
+        .modal-overlay.visible { display: flex; opacity: 1; }
+        .modal-content { background: var(--surface-color); padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); width: 90%; max-width: 550px; text-align: center; transform: scale(0.9); transition: transform 0.3s ease; }
+        .modal-overlay.visible .modal-content { transform: scale(1); }
+        .modal-actions { display: flex; justify-content: center; gap: 15px; margin-top: 20px;}
+        .calendar-sync-list { list-style: none; padding: 0; text-align: left; max-height: 40vh; overflow-y: auto; border-top: 1px solid var(--light-gray-color); border-bottom: 1px solid var(--light-gray-color); margin: 15px 0; padding: 10px 0; }
+        .calendar-sync-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f1f1f1; border-radius: 8px; margin-bottom: 10px; }
+        .calendar-sync-buttons { display: flex; gap: 8px; }
+        .sync-btn-icon { background-color: #fff; border: 1px solid #ccc; color: #333; width: 36px; height: 36px; padding: 0; font-size: 16px; border-radius: 50%; flex-shrink: 0; }
+        .sync-btn-icon.google { color: var(--google-blue); }
+        .sync-btn-icon.microsoft { color: var(--ms-blue); }
+        .sync-btn-icon.apple { color: var(--apple-gray); }
+        .sync-status.synced { font-weight: 600; color: var(--success-color); }
+        #ticket-wrapper-for-image, #ticket-wrapper-for-print { display: none; }
+        #ticket-content { width: 700px; background-color: var(--surface-color); font-family: 'Poppins', sans-serif; border-radius: 15px; overflow: hidden; }
+        .ticket-header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 20px; text-align: center; }
+        .ticket-header h3 { margin: 0; font-size: 1.8em; }
+        .ticket-header p { margin: 5px 0 0 0; font-size: 1.1em; opacity: 0.9; }
+        .ticket-user-info { font-size: 0.9em !important; opacity: 0.8; margin-top: 10px !important; }
+        #ticket-list { padding: 20px; list-style: none; margin: 0; }
+        .ticket-list-item { display: flex; align-items: center; gap: 15px; padding: 15px 10px; border-bottom: 1px solid var(--light-gray-color); }
+        @media print {
+            body > #layout-wrapper, body > #modal, body > #ticket-wrapper-for-image { display: none; }
+            #ticket-wrapper-for-print { display: block !important; }
+        }
+        @media (min-width: 992px) {
+            #layout-wrapper { flex-direction: row; align-items: flex-start; }
+            #calendar-container { width: 320px; flex-shrink: 0; position: sticky; top: 20px; }
+        }
+        @media (max-width: 768px) {
+            #user-info-section, #schedule-form, .button-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="layout-wrapper">
+        <div id="app-container">
+            <h1><i class="fa-solid fa-calendar-check"></i> Agendador Acavt</h1>
+            <div id="user-info-section">
+                <h2><i class="fa-solid fa-user"></i> Identificação</h2>
+                <div class="form-group"><label for="user-name">Nome do Usuário</label><input type="text" id="user-name" placeholder="Digite seu nome"></div>
+                <div class="form-group"><label for="user-city">Sua Cidade</label><select id="user-city"></select></div>
+            </div>
+            <div id="period-selector"><label for="period-select">Selecione o Período</label><select id="period-select"></select></div>
+            <div id="summary-info"></div>
+            <h2><i class="fa-solid fa-plus-circle"></i> Adicionar ACAVT</h2>
+            <form id="schedule-form">
+                <div class="form-group"><label for="work-date">Data</label><input type="date" id="work-date" required></div>
+                <div class="form-group"><label for="work-time">Horário</label><input type="time" id="work-time" required></div>
+                <div class="form-group"><label for="city-select">Cidade da Atividade</label><select id="city-select" required></select></div>
+                <div class="form-group"><label for="activity-type-select">Tipo de Atividade</label><select id="activity-type-select" required><option value="educacao">Educação</option><option value="fiscalizacao">Fiscalização</option></select></div>
+                <div class="form-group full-width"><label for="activity-detail-select" id="activity-detail-label">Detalhe da Atividade</label><select id="activity-detail-select" required></select></div>
+                <button type="submit" id="add-schedule-btn" class="btn"><i class="fa-solid fa-plus"></i> Adicionar</button>
+            </form>
+            <h2><i class="fa-solid fa-list-ul"></i> ACAVTs Agendadas</h2>
+            <ul id="schedule-list"></ul>
+            <div class="button-group">
+                <button id="save-image-btn" class="btn"><i class="fa-solid fa-file-image"></i> Salvar Imagem</button>
+                <button id="print-ticket-btn" class="btn"><i class="fa-solid fa-print"></i> Imprimir</button>
+            </div>
+            <div id="data-management-section">
+                <h2><i class="fa-solid fa-database"></i> Gerenciamento de Dados</h2>
+                <button id="calendar-sync-main-btn" class="btn"><i class="fa-solid fa-calendar-days"></i> Sincronizar com Agendas</button>
+                <div class="button-group">
+                    <button id="backup-btn" class="btn"><i class="fa-solid fa-download"></i> Fazer Backup (TXT)</button>
+                    <label for="restore-input" id="restore-btn" class="btn"><i class="fa-solid fa-upload"></i> Restaurar Backup</label>
+                </div>
+                <input type="file" id="restore-input" accept=".txt" style="display: none;">
+            </div>
+        </div>
+        <div id="calendar-container">
+            <div id="calendar-header"></div>
+            <div id="calendar-weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
+            <div id="calendar-grid"></div>
+        </div>
+    </div>
+    <div id="modal" class="modal-overlay"></div>
+    <div id="ticket-wrapper-for-image"><div id="ticket-content"><div class="ticket-header"><h3 id="ticket-title">Relatório de ACAVTs</h3><p id="ticket-user-info" class="ticket-user-info"></p><p id="ticket-period"></p></div><ul id="ticket-list"></ul></div></div>
+    <div id="ticket-wrapper-for-print"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const DOM = {
+            userName: document.getElementById('user-name'), userCity: document.getElementById('user-city'),
+            periodSelect: document.getElementById('period-select'), summaryInfo: document.getElementById('summary-info'),
+            scheduleForm: document.getElementById('schedule-form'), workDateInput: document.getElementById('work-date'),
+            workTimeInput: document.getElementById('work-time'), citySelect: document.getElementById('city-select'),
+            activityTypeSelect: document.getElementById('activity-type-select'), activityDetailSelect: document.getElementById('activity-detail-select'),
+            activityDetailLabel: document.getElementById('activity-detail-label'), scheduleList: document.getElementById('schedule-list'),
+            saveImageBtn: document.getElementById('save-image-btn'), printTicketBtn: document.getElementById('print-ticket-btn'),
+            modal: document.getElementById('modal'), calendarHeader: document.getElementById('calendar-header'),
+            calendarGrid: document.getElementById('calendar-grid'), ticketWrapperForImage: document.getElementById('ticket-wrapper-for-image'),
+            ticketContent: document.getElementById('ticket-content'), ticketUserInfo: document.getElementById('ticket-user-info'),
+            ticketPeriod: document.getElementById('ticket-period'), ticketList: document.getElementById('ticket-list'),
+            ticketWrapperForPrint: document.getElementById('ticket-wrapper-for-print'), backupBtn: document.getElementById('backup-btn'),
+            restoreInput: document.getElementById('restore-input'),
+            calendarSyncMainBtn: document.getElementById('calendar-sync-main-btn'),
+        };
+        const cityOptions = ['Cabixi', 'Cerejeiras', 'Chupinguaia', 'Colorado', 'Corumbiara', 'Pimenteiras', 'Vilhena'];
+        const activityOptions = {
+            educacao: { label: 'Camiseta', options: ['Desacelere', 'Chegar Bem', 'Vale Mais', 'Respeite'] },
+            fiscalizacao: { label: 'Operação', options: ['Apoio Operacional e Logístico', 'Duas Rodas, Uma Vida!', 'Fiscalização Convencional', 'Fiscalização Escolar', 'Oficina Operacional', 'Operação Lei Seca', 'Patrulhamento Viário', 'Quatro Rodas, Uma Vida!', 'Operação Guardião', 'Operação Corta Giro', 'Rota-Segura'] }
+        };
+        let schedules = JSON.parse(localStorage.getItem('schedules_acavt_v12')) || [];
+        let userInfo = JSON.parse(localStorage.getItem('userInfo_acavt_v12')) || { name: '', city: '' };
+        let availablePeriods = [];
+        const showModal = (title, message, buttons = []) => {
+            if (buttons.length === 0) {
+                buttons.push({ text: 'Fechar', class: 'modal-btn-cancel' });
+            }
+            DOM.modal.innerHTML = `<div class="modal-content"><h3>${title}</h3><div id="modal-message-content">${message}</div><div class="modal-actions"></div></div>`;
+            const modalActions = DOM.modal.querySelector('.modal-actions');
+            buttons.forEach(btnInfo => {
+                const button = document.createElement('button');
+                if (btnInfo.id) button.id = btnInfo.id;
+                button.innerHTML = btnInfo.text;
+                button.className = `btn ${btnInfo.class || 'modal-btn-cancel'}`;
+                button.onclick = () => { if (!btnInfo.keepOpen) hideModal(); if (btnInfo.action) btnInfo.action(); };
+                modalActions.appendChild(button);
+            });
+            DOM.modal.classList.add('visible');
+        };
+        const hideModal = () => DOM.modal.classList.remove('visible');
+        const formatDate = (date) => date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const saveSchedules = () => localStorage.setItem('schedules_acavt_v12', JSON.stringify(schedules));
+        const saveUserInfo = () => { userInfo.name = DOM.userName.value; userInfo.city = DOM.userCity.value; localStorage.setItem('userInfo_acavt_v12', JSON.stringify(userInfo)); };
+        const loadUserInfo = () => { DOM.userName.value = userInfo.name; DOM.userCity.value = userInfo.city; };
+        const populateCitySelects = () => { [DOM.citySelect, DOM.userCity].forEach(select => { select.innerHTML = cityOptions.map(c => `<option value="${c}">${c}</option>`).join(''); }); };
+        const updateActivityDetails = () => { const type = DOM.activityTypeSelect.value; DOM.activityDetailLabel.textContent = activityOptions[type].label; DOM.activityDetailSelect.innerHTML = activityOptions[type].options.map(o => `<option value="${o}">${o}</option>`).join(''); };
+        const generatePeriods = () => {
+            const today = new Date(); availablePeriods = []; let currentPeriodIndex = 0;
+            for (let i = 12; i > -12; i--) { const date = new Date(today.getFullYear(), today.getMonth() - i, 1); const startDate = new Date(date.getFullYear(), date.getMonth() - 1, 16); const endDate = new Date(date.getFullYear(), date.getMonth(), 15); availablePeriods.push({ text: `${formatDate(startDate)} a ${formatDate(endDate)}`, startDate, endDate }); }
+            availablePeriods.reverse(); const now = today.getTime();
+            availablePeriods.forEach((p, i) => { if (now >= p.startDate.getTime() && now <= p.endDate.getTime()) currentPeriodIndex = i; });
+            DOM.periodSelect.innerHTML = availablePeriods.map((p, i) => `<option value="${i}">${p.text}</option>`).join('');
+            DOM.periodSelect.value = currentPeriodIndex;
+        };
+        const generateCalendar = (startDate, endDate, periodSchedules) => {
+            DOM.calendarHeader.textContent = startDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
+            const dailyStatus = {};
+            periodSchedules.forEach(s => { if (!dailyStatus[s.date]) dailyStatus[s.date] = { total: 0, concluded: 0 }; dailyStatus[s.date].total++; if (s.concluded) dailyStatus[s.date].concluded++; });
+            let html = Array(startDate.getDay()).fill('<div class="calendar-day empty"></div>').join('');
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dayString = d.toISOString().split('T')[0];
+                const status = dailyStatus[dayString];
+                let statusClass = status ? (status.total === status.concluded ? 'concluded' : 'scheduled') : '';
+                html += `<div class="calendar-day ${statusClass}">${d.getDate()}</div>`;
+            }
+            DOM.calendarGrid.innerHTML = html;
+        };
+        const render = () => {
+            const period = availablePeriods[DOM.periodSelect.value]; if (!period) return;
+            const periodSchedules = schedules.filter(s => { const d = new Date(s.date + "T00:00"); return d >= period.startDate && d <= period.endDate });
+            const concluded = periodSchedules.filter(s => s.concluded).length;
+            DOM.summaryInfo.innerHTML = `<div class="summary-item"><span class="value agendadas">${periodSchedules.length}</span><span class="label">Agendadas</span></div><div class="summary-item"><span class="value concluidas">${concluded}</span><span class="label">Concluídas</span></div><div class="summary-item"><span class="value disponiveis">${Math.max(0, 8 - periodSchedules.length)}</span><span class="label">Disponíveis</span></div>`;
+            DOM.scheduleList.innerHTML = periodSchedules.sort((a, b) => new Date(a.date) - new Date(b.date)).map((s, i) => `<li class="schedule-item ${s.concluded ? 'concluded' : ''}" data-id="${s.id}"><div class="info"><span class="num">${i + 1}.</span><div class="info-text"><strong>${new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR')}</strong><span><i class="fa-solid fa-clock"></i> ${s.time} | <i class="fa-solid fa-location-dot"></i> ${s.city}</span><span><i class="fa-solid ${s.activityType === 'Educação' ? 'fa-bullhorn' : 'fa-shield-halved'}"></i> ${s.activityType}: ${s.activityDetail}</span></div></div><div class="actions"><button class="conclude-btn"><i class="fa-solid ${s.concluded ? 'fa-check-double' : 'fa-check'}"></i></button><button class="remove-btn"><i class="fa-solid fa-trash-can"></i></button></div></li>`).join('');
+            generateCalendar(new Date(period.startDate), new Date(period.endDate), periodSchedules);
+            saveSchedules();
+        };
+        const generateTicketContent = (list, period, user) => {
+            const selectedPeriod = availablePeriods[DOM.periodSelect.value];
+            const tickets = schedules.filter(s => new Date(s.date) >= selectedPeriod.startDate && new Date(s.date) <= selectedPeriod.endDate);
+            if (tickets.length === 0) { showModal('Atenção', 'Nenhuma ACAVT neste período.'); return false; }
+            user.textContent = (userInfo.name || userInfo.city) ? `Usuário: ${userInfo.name || 'N/A'} | Cidade: ${userInfo.city || 'N/A'}` : '';
+            period.textContent = `Período: ${selectedPeriod.text}`;
+            list.innerHTML = tickets.sort((a,b)=>new Date(a.date)-new Date(b.date)).map((s, i) => `<li class="ticket-list-item"><span class="num">${i+1}.</span><div class="details"><strong>${new Date(s.date+'T00:00:00').toLocaleDateString('pt-BR')}</strong> - ${s.time}<br><small>${s.city} | <i class="fa-solid ${s.activityType==='Educação'?'fa-bullhorn':'fa-shield-halved'}"></i> ${s.activityType}: ${s.activityDetail}</small></div>${s.concluded?'<i class="fa-solid fa-circle-check" style="color:var(--success-color);"></i>':''}</li>`).join('');
+            return true;
+        };
+
+        const handleCalendarSync = () => {
+            const schedulesToExport = schedules.filter(s => !s.exportedToCalendar && !s.concluded);
+            if (schedulesToExport.length === 0) {
+                showModal('Sincronizar Agendas', '<p>Nenhuma nova ACAVT para adicionar à agenda. Atividades já concluídas ou já sincronizadas são ignoradas.</p>');
+                return;
+            }
+
+            let modalContent = '<p>Clique em um dos ícones para adicionar o evento à agenda desejada.</p><ul class="calendar-sync-list">';
+            schedulesToExport.forEach(s => {
+                modalContent += `
+                    <li id="sync-item-${s.id}">
+                        <span><strong>${formatDate(new Date(s.date + 'T00:00'))}</strong> - ${s.city}</span>
+                        <div class="calendar-sync-buttons">
+                            <button class="sync-btn-icon google" data-type="google" data-id="${s.id}" title="Adicionar ao Google Calendar"><i class="fa-brands fa-google"></i></button>
+                            <button class="sync-btn-icon microsoft" data-type="microsoft" data-id="${s.id}" title="Adicionar ao Outlook Calendar"><i class="fa-brands fa-windows"></i></button>
+                            <button class="sync-btn-icon apple" data-type="apple" data-id="${s.id}" title="Baixar para Apple/iOS Calendar (.ics)"><i class="fa-brands fa-apple"></i></button>
+                        </div>
+                        <span class="sync-status" style="display: none;"></span>
+                    </li>`;
+            });
+            modalContent += '</ul>';
+            
+            showModal('Sincronizar com Agendas', modalContent, [{ text: 'Fechar' }]);
+            
+            const syncEvent = (button) => {
+                const scheduleId = Number(button.dataset.id);
+                const type = button.dataset.type;
+                const schedule = schedules.find(s => s.id === scheduleId);
+                
+                if (!schedule) return;
+
+                const startTime = new Date(`${schedule.date}T${schedule.time}`);
+                const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+                const eventTitle = `ACAVT em ${schedule.city}: ${schedule.activityType} - ${schedule.activityDetail}`;
+                const eventDetails = `Atividade: ${schedule.activityType}\nDetalhe: ${schedule.activityDetail}\nAgendado por: ${userInfo.name || 'N/A'}`;
+                const eventLocation = `${schedule.city}, RO, Brasil`;
+
+                if (type === 'google') {
+                    const toGoogleDate = (date) => date.toISOString().replace(/[-:]|\.\d{3}/g, '');
+                    const googleDates = `${toGoogleDate(startTime)}/${toGoogleDate(endTime)}`;
+                    const url = new URL('https://www.google.com/calendar/render');
+                    url.searchParams.set('action', 'TEMPLATE');
+                    url.searchParams.set('text', eventTitle);
+                    url.searchParams.set('dates', googleDates);
+                    url.searchParams.set('details', eventDetails);
+                    url.searchParams.set('location', eventLocation);
+                    window.open(url.href, '_blank', 'noopener,noreferrer');
+                } else if (type === 'microsoft') {
+                    const url = new URL('https://outlook.live.com/calendar/0/deeplink/compose');
+                    url.searchParams.set('path', '/calendar/action/compose');
+                    url.searchParams.set('rru', 'addevent');
+                    url.searchParams.set('subject', eventTitle);
+                    url.searchParams.set('startdt', startTime.toISOString());
+                    url.searchParams.set('enddt', endTime.toISOString());
+                    url.searchParams.set('body', eventDetails);
+                    url.searchParams.set('location', eventLocation);
+                    window.open(url.href, '_blank', 'noopener,noreferrer');
+                } else if (type === 'apple') {
+                    const toICSDate = (date) => date.toISOString().replace(/[-:]|\.\d{3}/g, '');
+                    const icsContent = [
+                        'BEGIN:VCALENDAR',
+                        'VERSION:2.0',
+                        'BEGIN:VEVENT',
+                        `UID:${schedule.id}@agendador.acavt`,
+                        `DTSTAMP:${toICSDate(new Date())}`,
+                        `DTSTART:${toICSDate(startTime)}`,
+                        `DTEND:${toICSDate(endTime)}`,
+                        `SUMMARY:${eventTitle}`,
+                        `DESCRIPTION:${eventDetails.replace(/\n/g, '\\n')}`,
+                        `LOCATION:${eventLocation}`,
+                        'END:VEVENT',
+                        'END:VCALENDAR'
+                    ].join('\r\n');
+                    
+                    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `ACAVT_${schedule.date}.ics`;
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                }
+
+                schedule.exportedToCalendar = true;
+                saveSchedules();
+                
+                const listItem = document.getElementById(`sync-item-${scheduleId}`);
+                const buttonGroup = listItem.querySelector('.calendar-sync-buttons');
+                const statusSpan = listItem.querySelector('.sync-status');
+                
+                buttonGroup.style.display = 'none';
+                statusSpan.innerHTML = '<i class="fa-solid fa-check"></i> Sincronizado';
+                statusSpan.classList.add('synced');
+                statusSpan.style.display = 'inline';
+            };
+            
+            document.querySelectorAll('.sync-btn-icon').forEach(button => button.addEventListener('click', (e) => syncEvent(e.currentTarget)));
+        };
+
+        DOM.scheduleForm.addEventListener('submit', e => { e.preventDefault(); schedules.push({ id: Date.now(), date: DOM.workDateInput.value, time: DOM.workTimeInput.value, city: DOM.citySelect.value, activityType: DOM.activityTypeSelect.options[DOM.activityTypeSelect.selectedIndex].text, activityDetail: DOM.activityDetailSelect.value, concluded: false, exportedToCalendar: false }); render(); DOM.scheduleForm.reset(); updateActivityDetails(); });
+        DOM.scheduleList.addEventListener('click', e => { const btn = e.target.closest('button'); if (!btn) return; const id = Number(e.target.closest('.schedule-item').dataset.id); const schedule = schedules.find(s => s.id === id); if (btn.classList.contains('conclude-btn') && schedule) { schedule.concluded = !schedule.concluded; render(); } else if (btn.classList.contains('remove-btn')) { showModal('Confirmar Remoção', 'Deseja remover esta ACAVT?', [{text:'Cancelar'},{text:'Remover', class:'modal-btn-confirm', action:() => { schedules = schedules.filter(s => s.id !== id); render(); }}]); } });
+        DOM.saveImageBtn.addEventListener('click', () => { const clone = DOM.ticketContent.cloneNode(true); if (generateTicketContent(clone.querySelector('#ticket-list'), clone.querySelector('#ticket-period'), clone.querySelector('#ticket-user-info'))) { clone.style.position = 'absolute'; clone.style.top = '-9999px'; document.body.appendChild(clone); html2canvas(clone, { scale: 2 }).then(c => { const link = document.createElement('a'); link.href = c.toDataURL('image/jpeg', 0.9); link.download = `Relatorio_ACAVT_${availablePeriods[DOM.periodSelect.value].text.replace(/\s|\//g, '')}.jpg`; link.click(); }).finally(() => document.body.removeChild(clone)); } });
+        DOM.printTicketBtn.addEventListener('click', () => { DOM.ticketWrapperForPrint.innerHTML = ''; const clone = DOM.ticketContent.cloneNode(true); DOM.ticketWrapperForPrint.appendChild(clone); if (generateTicketContent(clone.querySelector('#ticket-list'), clone.querySelector('#ticket-period'), clone.querySelector('#ticket-user-info'))) window.print(); });
+        DOM.backupBtn.addEventListener('click', () => { const period = availablePeriods[DOM.periodSelect.value]; const periodSchedules = schedules.filter(s => new Date(s.date) >= period.startDate && new Date(s.date) <= period.endDate); if (periodSchedules.length === 0) { showModal('Backup Vazio', 'Não há agendamentos neste período.'); return; } const backupData = { userInfo, periodSchedules }; const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'text/plain' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `backup_acavt_${userInfo.name.replace(/\s+/g, '_')||'usuario'}_${period.text.replace(/\s|\//g, '-')}.txt`; link.click(); URL.revokeObjectURL(link.href); });
+        DOM.restoreInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    if (!data.userInfo || !Array.isArray(data.periodSchedules)) throw new Error('Formato inválido.');
+                    showModal('Confirmar Restauração', 'Isto substituirá TODOS os agendamentos atuais pelos do arquivo. Continuar?', [{ text: 'Cancelar' }, { text: 'Confirmar', class: 'modal-btn-confirm', action: () => {
+                        schedules = data.periodSchedules.map(s => ({ ...s, exportedToCalendar: s.exportedToCalendar || false }));
+                        userInfo = data.userInfo;
+                        saveSchedules();
+                        loadUserInfo();
+                        saveUserInfo();
+                        render();
+                        showModal('Sucesso', 'Backup restaurado com sucesso.');
+                    }}]);
+                } catch (err) {
+                    showModal('Erro', `Arquivo de backup inválido ou corrompido. ${err.message}`);
+                } finally {
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        });
+        
+        DOM.periodSelect.addEventListener('change', render);
+        DOM.activityTypeSelect.addEventListener('change', updateActivityDetails);
+        DOM.userName.addEventListener('input', saveUserInfo);
+        DOM.userCity.addEventListener('change', saveUserInfo);
+        DOM.calendarSyncMainBtn.addEventListener('click', handleCalendarSync);
+        
+        populateCitySelects();
+        loadUserInfo();
+        generatePeriods();
+        updateActivityDetails();
+        render();
+    });
+    </script>
+</body>
+</html>
